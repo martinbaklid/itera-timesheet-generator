@@ -44,7 +44,7 @@ class TimeSheet:
         wb.save(name)
 
 def _read_json_timesheet(filename):
-    with open(sys.argv[1]) as fp:
+    with open(filename) as fp:
         return json.load(fp)
     
 def main():
