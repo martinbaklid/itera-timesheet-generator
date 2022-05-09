@@ -11,20 +11,20 @@ class TimesheetLine:
     legal_entity: str
     project: str
     activity: str
-    monday_hours: float
-    tuesday_hours: float
-    wedensday_hours: float
-    thursday_hours: float
-    friday_hours: float
-    saterday_hours: float
-    sunday_hours: float
-    monday_comments: str
-    tuesday_comments: str
-    wedensday_comments: str
-    thursday_comments: str
-    friday_comments: str
-    saterday_comments: str
-    sunday_comments: str
+    monday_hours: float = 0
+    tuesday_hours: float = 0
+    wedensday_hours: float = 0
+    thursday_hours: float = 0
+    friday_hours: float = 0
+    saterday_hours: float = 0
+    sunday_hours: float = 0
+    monday_comments: str = ''
+    tuesday_comments: str = ''
+    wedensday_comments: str = ''
+    thursday_comments: str = ''
+    friday_comments: str = ''
+    saterday_comments: str = ''
+    sunday_comments: str = ''
 
 
 class Timesheet:
@@ -34,6 +34,9 @@ class Timesheet:
 
     def __iter__(self) -> Iterator[TimesheetLine]:
         return iter(self._timesheet_lines)
+
+    def append(self, timesheet_line: TimesheetLine) -> None:
+        self._timesheet_lines.append(timesheet_line)
 
     @staticmethod
     def from_json_file(filename: Path) -> Timesheet:
