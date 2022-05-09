@@ -1,0 +1,40 @@
+[
+    {
+        "legal_entity": "110",
+        "project": "11000003.01",
+        "activity": "A110003534",
+        "monday_hours": 1,
+        "monday_comments": "Hei mon foo",
+        "tuesday_hours": 2,
+        "tuesday_comments": "Hei tue",
+        "wedensday_hours": 3,
+        "wedensday_comments": "Hei wed",
+        "thursday_hours": 4,
+        "thursday_comments": "Hei thur",
+        "friday_hours": 5,
+        "friday_comments": "Hei fri",
+        "saterday_hours": 6,
+        "saterday_comments": "Hei sat",
+        "sunday_hours": 7,
+        "sunday_comments": "Hei sun"
+    },
+    {
+        "legal_entity": "110",
+        "project": "11000003.01",
+        "activity": "A110003534",
+        "monday_hours": 1,
+        "monday_comments": "Hei mon",
+        "tuesday_hours": 2,
+        "tuesday_comments": "Hei tue",
+        "wedensday_hours": 3,
+        "wedensday_comments": "Hei wed",
+        "thursday_hours": 4,
+        "thursday_comments": "Hei thu",
+        "friday_hours": 5,
+        "friday_comments": "Hei fri",
+        "saterday_hours": 6,
+        "saterday_comments": "Hei sat",
+        "sunday_hours": 7,
+        "sunday_comments": "Hei sun"
+    }
+]
