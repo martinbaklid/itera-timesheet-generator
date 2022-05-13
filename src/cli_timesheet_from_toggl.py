@@ -49,10 +49,10 @@ class WeeklySummary:
     def __init__(self) -> None:
         self.project_name = ''
         self.description = ''
-        self.duration = [0, 0, 0, 0, 0, 0]
+        self.duration = [0, 0, 0, 0, 0, 0, 0]
 
     def add_for_weekday(self, duration: int, weekday: int) -> None:
-        assert duration < 6
+        assert weekday <= 6
         self.duration[weekday] = duration
 
 
@@ -95,12 +95,11 @@ def main() -> None:
     toggl = Toggl()
     toggl.setAPIKey(toggl_api_key)
     workspace = toggl.getWorkspace(name=workspace_name)
-    response = toggl.getDetailedReport({
+    weekly_report = toggl.getDetailedReport({
         'workspace_id': workspace['id'],
         'since': timesheet_period.start,
         'until': timesheet_period.end,
     })['data']
-    weekly_report = response['data']
 
     summary_by_proj_desc: dict[str, WeeklySummary] = defaultdict(WeeklySummary)
     for entry in weekly_report:
@@ -123,7 +122,7 @@ def main() -> None:
             )
         day_totals = [
             0 if ms is None else round(ms / 1000 / 60 / 60, ndigits=1)
-            for ms in entry['dur']
+            for ms in summary.duration
         ]
         timesheet_line = TimesheetLine(
             legal_entity=110,
