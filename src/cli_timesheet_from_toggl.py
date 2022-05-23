@@ -2,58 +2,39 @@ from __future__ import annotations
 
 import argparse
 import os
-import re
-from collections import defaultdict
-from dataclasses import dataclass
-from datetime import date
-from datetime import datetime
-from datetime import timedelta
 from pathlib import Path
 
-from toggl.TogglPy import Toggl
-
 from src.itera_timesheet_workbook import _IteraTimesheetWorkbook
-from src.timesheet import Timesheet
-from src.timesheet import TimesheetLine
+from src.timesheet import TimesheetPeriod
+from src.toggl import ToggleTimesheet
 
 
-@dataclass
-class TimesheetPeriod:
-    start: date
-    end: date
-
-    @classmethod
-    def this_week(cls) -> TimesheetPeriod:
-        today = date.today()
-        start = today - timedelta(days=today.weekday())
-        end = start + timedelta(days=6)
-        return cls(start, end)
-
-    @classmethod
-    def last_week(cls) -> TimesheetPeriod:
-        today = date.today()
-        start = today - timedelta(days=today.weekday() + 7)
-        end = start + timedelta(days=6)
-        return cls(start, end)
-
-    @classmethod
-    def from_name(cls, name: str) -> TimesheetPeriod:
-        return {
-            'this_week': cls.this_week,
-            'last_week': cls.last_week,
-        }[name]()
+def _group_by_project(entry: dict[any]) -> str:
+    return f"{entry['project']}"
 
 
-class WeeklySummary:
+def _group_by_project_and_description(entry: dict[any]) -> str:
+    return f"{entry['project']}-{entry['description']}"
 
-    def __init__(self) -> None:
-        self.project_name = ''
-        self.description = ''
-        self.duration = [0, 0, 0, 0, 0, 0, 0]
 
-    def add_for_weekday(self, duration: int, weekday: int) -> None:
-        assert weekday <= 6
-        self.duration[weekday] = duration
+_group_by_func_for = {
+    'project': _group_by_project,
+    'project_and_description': _group_by_project_and_description,
+}
+
+
+def _no_description(group) -> str:
+    return ''
+
+
+def _first_description(group) -> str:
+    return group[0]['description']
+
+
+_description_func_for = {
+    'project': _no_description,
+    'project_and_description': _first_description,
+}
 
 
 def main() -> None:
@@ -62,15 +43,18 @@ def main() -> None:
         '--workspace-name',
         type=str,
         required=True,
+        help='Toggl workspace name to use',
     )
     parser.add_argument(
         '--xlsx-output-file',
         type=Path,
         required=True,
+        help='The output xlsx file (itera dynamics xlsx timesheet)',
     )
     parser.add_argument(
         '--toggl-api-key',
         default=os.environ['TIMESHEET_TOGGL_API_KEY'],
+        help='The toggl api key (see tinyurl.com/toggl-api-key)',
     )
     week_group = parser.add_mutually_exclusive_group()
     week_group.add_argument(
@@ -78,12 +62,31 @@ def main() -> None:
         action='store_const',
         const='this_week',
         dest='period',
+        help='Generate timesheet for this week (default)',
     )
     week_group.add_argument(
         '--last-week',
         action='store_const',
         const='last_week',
         dest='period',
+        help='Generate timesheet for last week',
+    )
+    group_by = parser.add_mutually_exclusive_group()
+    group_by.add_argument(
+        '--group-by-project-and-description',
+        action='store_const',
+        const='project_and_description',
+        dest='group_by',
+        help='Group time entires by toggl project name '
+        'and the toggl descriptions',
+    )
+    group_by.add_argument(
+        '--group-by-project',
+        action='store_const',
+        const='project',
+        dest='group_by',
+        help='Group time entries by toggl project name '
+        '(note: this will not create timesheet comments)',
     )
     args = parser.parse_args()
 
@@ -91,59 +94,19 @@ def main() -> None:
     timesheet_period = TimesheetPeriod.from_name(args.period or 'this_week')
     workspace_name = args.workspace_name
     xlsx_file = args.xlsx_output_file
+    group_key_func = _group_by_func_for[
+        args.group_by or 'project_and_description'
+    ]
+    description_func = _description_func_for[
+        args.group_by or 'project_and_description'
+    ]
 
-    toggl = Toggl()
-    toggl.setAPIKey(toggl_api_key)
-    workspace = toggl.getWorkspace(name=workspace_name)
-    weekly_report = toggl.getDetailedReport({
-        'workspace_id': workspace['id'],
-        'since': timesheet_period.start,
-        'until': timesheet_period.end,
-    })['data']
-
-    summary_by_proj_desc: dict[str, WeeklySummary] = defaultdict(WeeklySummary)
-    for entry in weekly_report:
-        group_key = f"{entry['project']}-{entry['description']}"
-        summary = summary_by_proj_desc[group_key]
-        weekday = datetime.fromisoformat(entry['start']).weekday()
-        summary.add_for_weekday(entry['dur'], weekday)
-        summary.project_name = entry['project']
-        summary.description = entry['description']
-
-    timesheet = Timesheet()
-    for summary in summary_by_proj_desc.values():
-        if matches := re.match(r'^\[(.*)-(.*)\]', summary.project_name):
-            project_id = matches.group(1)
-            activity_id = matches.group(2)
-        else:
-            raise ValueError(
-                'Project names in toggl need to be prefixed with '
-                '[<project_id>-<activitiy_id>]',
-            )
-        day_totals = [
-            0 if ms is None else round(ms / 1000 / 60 / 60, ndigits=1)
-            for ms in summary.duration
-        ]
-        timesheet_line = TimesheetLine(
-            legal_entity=110,
-            project=project_id,
-            activity=activity_id,
-            monday_hours=day_totals[0],
-            tuesday_hours=day_totals[1],
-            wedensday_hours=day_totals[2],
-            thursday_hours=day_totals[3],
-            friday_hours=day_totals[4],
-            saterday_hours=day_totals[5],
-            sunday_hours=day_totals[6],
-            monday_comments=summary.description if day_totals[0] else '',
-            tuesday_comments=summary.description if day_totals[1] else '',
-            wedensday_comments=summary.description if day_totals[2] else '',
-            thursday_comments=summary.description if day_totals[3] else '',
-            friday_comments=summary.description if day_totals[4] else '',
-            saterday_comments=summary.description if day_totals[5] else '',
-            sunday_comments=summary.description if day_totals[6] else '',
-        )
-        timesheet.append(timesheet_line)
+    toggl_timesheet = ToggleTimesheet(toggl_api_key, workspace_name)
+    timesheet = toggl_timesheet.get_timesheet(
+        timesheet_period,
+        group_key_func,
+        description_func,
+    )
     workbook = _IteraTimesheetWorkbook.from_timesheet(timesheet)
     workbook.save(xlsx_file)
 

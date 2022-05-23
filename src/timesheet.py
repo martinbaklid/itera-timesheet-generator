@@ -2,8 +2,37 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from datetime import date
+from datetime import timedelta
 from pathlib import Path
 from typing import Iterator
+
+
+@dataclass
+class TimesheetPeriod:
+    start: date
+    end: date
+
+    @classmethod
+    def this_week(cls) -> TimesheetPeriod:
+        today = date.today()
+        start = today - timedelta(days=today.weekday())
+        end = start + timedelta(days=6)
+        return cls(start, end)
+
+    @classmethod
+    def last_week(cls) -> TimesheetPeriod:
+        today = date.today()
+        start = today - timedelta(days=today.weekday() + 7)
+        end = start + timedelta(days=6)
+        return cls(start, end)
+
+    @classmethod
+    def from_name(cls, name: str) -> TimesheetPeriod:
+        return {
+            'this_week': cls.this_week,
+            'last_week': cls.last_week,
+        }[name]()
 
 
 @dataclass
