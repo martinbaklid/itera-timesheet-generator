@@ -4,7 +4,7 @@
 
 ## CLI
 
-### `timesheet-from-json` JSON_TIMESHEET XLSX_TIMESHEET
+### `timesheet-from-json`
 ```
 usage: timesheet-from-json [-h] json_file xlsx_file
 
