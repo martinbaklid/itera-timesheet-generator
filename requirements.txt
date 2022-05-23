@@ -1,3 +1,2 @@
 openpyxl==3.0.9
-requests>=2.27.1
 TogglPy==0.1.2
